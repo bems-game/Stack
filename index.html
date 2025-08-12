@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Stack Tower (Mobile Friendly)</title>
+    <title>3D Stack Tower (Fixed)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <style>
@@ -62,7 +62,7 @@
     </div>
     <div id="start-screen" class="ui-overlay">
         <h1>3D Stack Tower</h1>
-        <p>Ketuk layar untuk menumpuk balok setinggi mungkin!</p>
+        <p>Ketuk layar untuk menumpuk balok!</p>
         <button id="start-button">Mulai</button>
     </div>
     <div id="game-over-screen" class="ui-overlay">
@@ -105,8 +105,10 @@
 
             scene = new THREE.Scene();
 
+            // Balok dasar
             addLayer(0, 0, 10, 10, 'x');
-            addLayer(-15, 0, 10, 10, 'z');
+            // Balok pertama yang bergerak
+            addLayer(-10, 0, 10, 10, 'z');
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
@@ -151,7 +153,6 @@
              Tone.Transport.bpm.value = 120;
         }
         
-        // PENYESUAIAN MOBILE: Fungsi untuk memulai game
         function startGame() {
             if (gameState !== 'ready') return;
             
@@ -186,7 +187,6 @@
             return { threejs: mesh, width, depth };
         }
         
-        // PENYESUAIAN MOBILE: Fungsi untuk menempatkan balok
         function placeBlock() {
             if (gameState !== 'playing') return;
 
@@ -216,8 +216,9 @@
                 const overhangDepth = direction === 'z' ? overhangSize : newDepth;
                 addOverhang(overhangX, overhangZ, overhangWidth, overhangDepth);
 
-                const nextX = direction === 'x' ? topLayer.threejs.position.x : -15;
-                const nextZ = direction === 'z' ? topLayer.threejs.position.z : -15;
+                // FIX: Logika posisi balok berikutnya disederhanakan kembali agar simetris
+                const nextX = direction === 'x' ? topLayer.threejs.position.x : -10;
+                const nextZ = direction === 'z' ? topLayer.threejs.position.z : -10;
                 const nextDirection = direction === 'x' ? 'z' : 'x';
                 const currentScore = stack.length - 1;
                 scoreElement.innerText = currentScore;
@@ -239,15 +240,11 @@
             }
         }
         
-        // PENYESUAIAN MOBILE: Event listener dipisahkan untuk kejelasan
         startButton.addEventListener('click', startGame);
-        
-        // Gunakan 'touchstart' untuk input dalam game yang lebih responsif di mobile
         window.addEventListener('touchstart', placeBlock);
-
         restartButton.addEventListener('click', () => {
             init();
-            startGame(); // Langsung mulai game lagi
+            startGame();
         });
 
         function animate() {
@@ -255,24 +252,24 @@
 
             if (gameState === 'playing') {
                 const topLayer = stack[stack.length - 1];
-                let speed = 0.15 + (stack.length * 0.005); // Kecepatan bertambah
-                speed = Math.min(speed, 0.4); // Batasi kecepatan maksimum
+                // FIX: Kecepatan konstan agar game lebih dapat diprediksi
+                const speed = 0.15;
 
                 topLayer.threejs.position[topLayer.direction] += speed;
-                if (topLayer.threejs.position[topLayer.direction] > 15) {
-                    topLayer.threejs.position[topLayer.direction] = -15;
+                // FIX: Jarak pergerakan disesuaikan agar simetris
+                if (topLayer.threejs.position[topLayer.direction] > 10) {
+                    topLayer.threejs.position[topLayer.direction] = -10;
                 }
                 
-                if(camera.position.y < boxHeight * stack.length + 4) {
-                    camera.position.y += speed / 3;
+                if(camera.position.y < boxHeight * (stack.length - 2) + 8) {
+                    camera.position.y += speed / 2;
                 }
             }
             
             overhangs.forEach(overhang => {
                 overhang.threejs.position.y -= 0.3;
             });
-
-            // Hapus overhang yang sudah jatuh jauh
+            
             overhangs = overhangs.filter(overhang => {
                 if (overhang.threejs.position.y < -20) {
                     scene.remove(overhang.threejs);
