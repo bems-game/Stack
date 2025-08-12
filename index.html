@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Stack Tower v3</title>
-    <!-- Memuat Three.js -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Stack Tower (Mobile Friendly)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Memuat Tone.js untuk suara -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Arial Black', Gadget, sans-serif; }
@@ -35,19 +33,21 @@
             border-radius: 10px;
             cursor: pointer;
             margin-top: 1rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
+        button:hover { background-color: #e67e22; }
         #score-container {
             position: absolute;
             top: 20px;
             width: 100%;
             text-align: center;
-            color: white; /* FIX: Warna skor dibuat putih */
-            pointer-events: none; /* Agar tidak mengganggu klik game */
+            color: white;
+            pointer-events: none;
         }
         #score {
             font-size: 4rem;
             font-weight: bold;
-            text-shadow: 0 4px 8px rgba(0,0,0,0.5); /* FIX: Bayangan lebih jelas */
+            text-shadow: 0 4px 8px rgba(0,0,0,0.5);
         }
         #high-score {
             font-size: 1rem;
@@ -62,7 +62,8 @@
     </div>
     <div id="start-screen" class="ui-overlay">
         <h1>3D Stack Tower</h1>
-        <p>Klik untuk menumpuk balok</p>
+        <p>Ketuk layar untuk menumpuk balok setinggi mungkin!</p>
+        <button id="start-button">Mulai</button>
     </div>
     <div id="game-over-screen" class="ui-overlay">
         <h1>GAME OVER</h1>
@@ -83,17 +84,18 @@
         const startScreen = document.getElementById('start-screen');
         const gameOverScreen = document.getElementById('game-over-screen');
         const finalScoreElement = document.getElementById('final-score');
+        const startButton = document.getElementById('start-button');
         const restartButton = document.getElementById('restart-button');
         let highScore = localStorage.getItem('stackHighScore') || 0;
 
         init();
-        animate(); // FIX: Memastikan game loop selalu berjalan
+        animate();
 
         function init() {
             gameState = 'loading';
             if (scene) {
-                while(scene.children.length > 0){ 
-                    scene.remove(scene.children[0]); 
+                while(scene.children.length > 0){
+                    scene.remove(scene.children[0]);
                 }
             }
             stack = [];
@@ -104,7 +106,7 @@
             scene = new THREE.Scene();
 
             addLayer(0, 0, 10, 10, 'x');
-            addLayer(-10, 0, 10, 10, 'z');
+            addLayer(-15, 0, 10, 10, 'z');
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
@@ -115,9 +117,8 @@
             const aspect = window.innerWidth / window.innerHeight;
             const d = 20;
             camera = new THREE.OrthographicCamera(-d * aspect / 2, d * aspect / 2, d / 2, -d / 2, 1, 1000);
-            
-            // FIX: Posisi kamera awal diturunkan
-            camera.position.set(10, 8, 10); 
+
+            camera.position.set(10, 8, 10);
             camera.lookAt(0, 0, 0);
 
             if (!renderer) {
@@ -128,27 +129,38 @@
             
             gameState = 'ready';
         }
-        
+
         function initAudio() {
              if (sfx) return;
              sfx = {
-                place: new Tone.Synth({oscillator: {type: 'sine'}, envelope: {attack: 0.005, decay: 0.2, sustain: 0, release: 0.2}}).toDestination(),
-                gameOver: new Tone.Synth().toDestination()
-            };
+                 place: new Tone.Synth({oscillator: {type: 'sine'}, envelope: {attack: 0.005, decay: 0.2, sustain: 0, release: 0.2}}).toDestination(),
+                 gameOver: new Tone.Synth().toDestination()
+             };
             
-            // FIX: Menambahkan musik latar
-            music = new Tone.Synth({
-                oscillator: { type: "fmsine", modulationType: "sine", modulationIndex: 3, harmonicity: 3.4 },
-                envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 2 }
-            }).toDestination();
-            music.volume.value = -15; // Volume lebih rendah
+             music = new Tone.Synth({
+                 oscillator: { type: "fmsine", modulationType: "sine", modulationIndex: 3, harmonicity: 3.4 },
+                 envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 2 }
+             }).toDestination();
+             music.volume.value = -15;
             
-            const musicPattern = new Tone.Sequence((time, note) => {
-                music.triggerAttackRelease(note, "8n", time);
-            }, ["C4", "E4", "G4", "B4"], "2n");
+             const musicPattern = new Tone.Sequence((time, note) => {
+                 music.triggerAttackRelease(note, "8n", time);
+             }, ["C4", "E4", "G4", "B4"], "2n");
             
-            musicPattern.start(0);
-            Tone.Transport.bpm.value = 120;
+             musicPattern.start(0);
+             Tone.Transport.bpm.value = 120;
+        }
+        
+        // PENYESUAIAN MOBILE: Fungsi untuk memulai game
+        function startGame() {
+            if (gameState !== 'ready') return;
+            
+            if(Tone.context.state !== 'running') Tone.start();
+            initAudio();
+            Tone.Transport.start();
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            gameState = 'playing';
         }
 
         function addLayer(x, z, width, depth, direction) {
@@ -173,74 +185,69 @@
             scene.add(mesh);
             return { threejs: mesh, width, depth };
         }
+        
+        // PENYESUAIAN MOBILE: Fungsi untuk menempatkan balok
+        function placeBlock() {
+            if (gameState !== 'playing') return;
 
-        function eventHandler() {
-            if (gameState === 'ready') {
-                if(Tone.context.state !== 'running') Tone.start();
-                initAudio();
-                Tone.Transport.start(); // Mulai musik
-                startScreen.style.display = 'none';
-                gameState = 'playing';
-                return;
-            }
+            sfx.place.triggerAttackRelease("C4", "8n");
+            const topLayer = stack[stack.length - 1];
+            const prevLayer = stack[stack.length - 2];
+            const direction = topLayer.direction;
 
-            if (gameState === 'playing') {
-                sfx.place.triggerAttackRelease("C4", "8n");
-                const topLayer = stack[stack.length - 1];
-                const prevLayer = stack[stack.length - 2];
-                const direction = topLayer.direction;
+            const delta = topLayer.threejs.position[direction] - prevLayer.threejs.position[direction];
+            const overhangSize = Math.abs(delta);
+            const size = direction === 'x' ? topLayer.width : topLayer.depth;
+            const overlap = size - overhangSize;
 
-                const delta = topLayer.threejs.position[direction] - prevLayer.threejs.position[direction];
-                const overhangSize = Math.abs(delta);
-                const size = direction === 'x' ? topLayer.width : topLayer.depth;
-                const overlap = size - overhangSize;
+            if (overlap > 0) {
+                const newWidth = direction === 'x' ? overlap : topLayer.width;
+                const newDepth = direction === 'z' ? overlap : topLayer.depth;
 
-                if (overlap > 0) {
-                    const newWidth = direction === 'x' ? overlap : topLayer.width;
-                    const newDepth = direction === 'z' ? overlap : topLayer.depth;
+                topLayer.width = newWidth;
+                topLayer.depth = newDepth;
+                topLayer.threejs.scale[direction] = overlap / size;
+                topLayer.threejs.position[direction] -= delta / 2;
 
-                    topLayer.width = newWidth;
-                    topLayer.depth = newDepth;
-                    topLayer.threejs.scale[direction] = overlap / size;
-                    topLayer.threejs.position[direction] -= delta / 2;
+                const overhangShift = (overlap / 2 + overhangSize / 2) * Math.sign(delta);
+                const overhangX = direction === 'x' ? topLayer.threejs.position.x + overhangShift : topLayer.threejs.position.x;
+                const overhangZ = direction === 'z' ? topLayer.threejs.position.z + overhangShift : topLayer.threejs.position.z;
+                const overhangWidth = direction === 'x' ? overhangSize : newWidth;
+                const overhangDepth = direction === 'z' ? overhangSize : newDepth;
+                addOverhang(overhangX, overhangZ, overhangWidth, overhangDepth);
 
-                    const overhangShift = (overlap / 2 + overhangSize / 2) * Math.sign(delta);
-                    const overhangX = direction === 'x' ? topLayer.threejs.position.x + overhangShift : topLayer.threejs.position.x;
-                    const overhangZ = direction === 'z' ? topLayer.threejs.position.z + overhangShift : topLayer.threejs.position.z;
-                    const overhangWidth = direction === 'x' ? overhangSize : newWidth;
-                    const overhangDepth = direction === 'z' ? overhangSize : newDepth;
-                    addOverhang(overhangX, overhangZ, overhangWidth, overhangDepth);
-
-                    const nextX = direction === 'x' ? topLayer.threejs.position.x : -15;
-                    const nextZ = direction === 'z' ? topLayer.threejs.position.z : -15;
-                    const nextDirection = direction === 'x' ? 'z' : 'x';
-                    const currentScore = stack.length - 1;
-                    scoreElement.innerText = currentScore;
-                    if (currentScore > highScore) {
-                        highScore = currentScore;
-                        localStorage.setItem('stackHighScore', highScore);
-                        highScoreElement.innerText = `High Score: ${highScore}`;
-                    }
-                    addLayer(nextX, nextZ, newWidth, newDepth, nextDirection);
-                } else {
-                    sfx.gameOver.triggerAttackRelease("C3", "4n");
-                    Tone.Transport.stop(); // Hentikan musik
-                    gameState = 'gameOver';
-                    finalScoreElement.innerText = stack.length - 1;
-                    gameOverScreen.style.display = 'flex';
-                    const topMesh = topLayer.threejs;
-                    addOverhang(topMesh.position.x, topMesh.position.z, topLayer.width, topLayer.depth);
-                    scene.remove(topMesh);
+                const nextX = direction === 'x' ? topLayer.threejs.position.x : -15;
+                const nextZ = direction === 'z' ? topLayer.threejs.position.z : -15;
+                const nextDirection = direction === 'x' ? 'z' : 'x';
+                const currentScore = stack.length - 1;
+                scoreElement.innerText = currentScore;
+                if (currentScore > highScore) {
+                    highScore = currentScore;
+                    localStorage.setItem('stackHighScore', highScore);
+                    highScoreElement.innerText = `High Score: ${highScore}`;
                 }
+                addLayer(nextX, nextZ, newWidth, newDepth, nextDirection);
+            } else {
+                sfx.gameOver.triggerAttackRelease("C3", "4n");
+                Tone.Transport.stop();
+                gameState = 'gameOver';
+                finalScoreElement.innerText = stack.length - 1;
+                gameOverScreen.style.display = 'flex';
+                const topMesh = topLayer.threejs;
+                addOverhang(topMesh.position.x, topMesh.position.z, topLayer.width, topLayer.depth);
+                scene.remove(topMesh);
             }
         }
         
-        window.addEventListener('click', eventHandler);
+        // PENYESUAIAN MOBILE: Event listener dipisahkan untuk kejelasan
+        startButton.addEventListener('click', startGame);
+        
+        // Gunakan 'touchstart' untuk input dalam game yang lebih responsif di mobile
+        window.addEventListener('touchstart', placeBlock);
+
         restartButton.addEventListener('click', () => {
-            gameOverScreen.style.display = 'none';
             init();
-            // Langsung mulai game setelah restart
-            eventHandler(); 
+            startGame(); // Langsung mulai game lagi
         });
 
         function animate() {
@@ -248,19 +255,30 @@
 
             if (gameState === 'playing') {
                 const topLayer = stack[stack.length - 1];
-                const speed = 0.15;
+                let speed = 0.15 + (stack.length * 0.005); // Kecepatan bertambah
+                speed = Math.min(speed, 0.4); // Batasi kecepatan maksimum
+
                 topLayer.threejs.position[topLayer.direction] += speed;
                 if (topLayer.threejs.position[topLayer.direction] > 15) {
                     topLayer.threejs.position[topLayer.direction] = -15;
                 }
                 
                 if(camera.position.y < boxHeight * stack.length + 4) {
-                    camera.position.y += speed / 2;
+                    camera.position.y += speed / 3;
                 }
             }
             
             overhangs.forEach(overhang => {
                 overhang.threejs.position.y -= 0.3;
+            });
+
+            // Hapus overhang yang sudah jatuh jauh
+            overhangs = overhangs.filter(overhang => {
+                if (overhang.threejs.position.y < -20) {
+                    scene.remove(overhang.threejs);
+                    return false;
+                }
+                return true;
             });
 
             if (renderer && scene && camera) {
